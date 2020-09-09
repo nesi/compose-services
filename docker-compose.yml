@@ -18,9 +18,8 @@ services:
     #
     # uncomment this to make postgres available from the container host - ex:
     #    psql -h localhost -d fence -U fence_user
-    ports:
-      - 5432:5432
-      - 22:22
+    #ports:
+    #  - 5432:5432
   indexd-service:
     image: "quay.io/cdis/indexd:2020.09"
     command: bash indexd_setup.sh
@@ -60,6 +59,7 @@ services:
       - PYTHONPATH=/var/www/fence
     depends_on:
       - postgres
+      - arborist-service
   arborist-service:
     image: "quay.io/cdis/arborist:2020.09"
     container_name: arborist-service
@@ -97,7 +97,6 @@ services:
       - ./datadictionary/gdcdictionary/schemas:/schemas_dir
     environment: &env
       DICTIONARY_URL: https://dictionary-bucket.s3.amazonaws.com/gen3.nesi.json
-
       # PATH_TO_SCHEMA_DIR: /schemas_dir
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
     healthcheck:
@@ -198,7 +197,9 @@ services:
       #- MOCK_STORE=true
       - APP=gitops
       - GDC_SUBPATH=http://revproxy-service/api/v0/submission/
-
+    depends_on:
+      - sheepdog-service
+      - peregrine-service
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost"]
       interval: 60s
