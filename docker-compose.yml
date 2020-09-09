@@ -1,7 +1,9 @@
-version: '3'
+version: '3.1'
 services:
   postgres:
-    image: postgres:9.6
+    image: postgres:9.5
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
     networks:
       - devnet
     volumes:
@@ -97,7 +99,7 @@ services:
       - ./scripts/peregrine_setup.sh:/peregrine_setup.sh
       - ./datadictionary/gdcdictionary/schemas:/schemas_dir
     environment: &env
-      DICTIONARY_URL: https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json
+      DICTIONARY_URL: https://dictionary-bucket.s3.amazonaws.com/gen3.nesi.json
       # PATH_TO_SCHEMA_DIR: /schemas_dir
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
     healthcheck:
@@ -161,8 +163,8 @@ services:
         soft: -1
         hard: -1
       nofile:
-        soft: 65536
-        hard: 65536
+        soft: 262144
+        hard: 262144
     ports:
       - 9200:9200
       - 9300:9300
@@ -183,7 +185,7 @@ services:
     depends_on:
       - peregrine-service
   portal-service:
-    image: "quay.io/cdis/data-portal:2020.09"
+    build: /home/ec2-user/repos/data-portal
     container_name: portal-service
     command: ["bash", "/var/www/data-portal/waitForContainers.sh"]
     networks:
@@ -253,7 +255,7 @@ services:
     networks:
       - devnet
     environment:
-      - DICTIONARY_URL=https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json
+      - DICTIONARY_URL=https://dictionary-bucket.s3.amazonaws.com/gen3.nesi.json
       - ES_URL=esproxy-service
       - ES_INDEX_NAME=etl
       - HADOOP_URL=hdfs://spark-service:9000
@@ -269,7 +271,7 @@ services:
   spark-service:
     image: "quay.io/cdis/gen3-spark:2020.09"
     container_name: spark-service
-    command: bash -c "python run_config.py && hdfs namenode -format && hdfs --daemon start namenode && hdfs --daemon start datanode && yarn --daemon start resourcemanager && yarn --daemon start nodemanager && hdfs dfsadmin -safemode leave &&  hdfs dfs -mkdir /result && while true; do sleep 5; done"
+    command: bash -c "python run_config.py && (yes Y | hdfs namenode -format) && hdfs --daemon start namenode && hdfs --daemon start datanode && yarn --daemon start resourcemanager && yarn --daemon start nodemanager && hdfs dfsadmin -safemode leave &&  hdfs dfs -mkdir /result && while true; do sleep 5; done"
     expose:
       - 22
       - 8030
